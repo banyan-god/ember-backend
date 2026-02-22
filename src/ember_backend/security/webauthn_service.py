@@ -5,6 +5,7 @@ import json
 import secrets
 from dataclasses import dataclass
 
+from fido2 import cbor
 from fido2.cose import CoseKey
 from fido2.rpid import verify_rp_id
 from fido2.webauthn import AttestationObject, AuthenticatorData
@@ -76,7 +77,7 @@ class StrictWebAuthnService(WebAuthnService):
         if credential_id != request.credentialId:
             raise APIError(400, "invalid_request", "credentialId does not match attestationObject")
 
-        public_key = bytes(auth_data.credential_data.public_key)
+        public_key = _serialize_cose_public_key(auth_data.credential_data.public_key)
         return RegistrationVerification(public_key=public_key, sign_count=int(auth_data.counter))
 
     def verify_authentication(
@@ -106,7 +107,10 @@ class StrictWebAuthnService(WebAuthnService):
 
         signed_data = auth_data_bytes + hashlib.sha256(client_data_raw).digest()
         try:
-            cose_key = CoseKey.parse(stored_public_key)
+            key_material = stored_public_key
+            if isinstance(key_material, (bytes, bytearray)):
+                key_material = cbor.decode(bytes(key_material))
+            cose_key = CoseKey.parse(key_material)
             verified = cose_key.verify(signed_data, signature)
         except Exception as exc:  # pragma: no cover
             raise APIError(401, "invalid_request", "Signature verification failed") from exc
@@ -197,3 +201,18 @@ def build_webauthn_service(settings: Settings) -> WebAuthnService:
     if settings.webauthn_mode.lower() == "stub":
         return StubWebAuthnService(settings)
     return StrictWebAuthnService(settings)
+
+
+def _serialize_cose_public_key(public_key: object) -> bytes:
+    # FIDO2 library returns credential public key as a COSE key map-like object.
+    # Store the canonical CBOR bytes so `CoseKey.parse` can deserialize later.
+    if isinstance(public_key, bytes):
+        return public_key
+    if isinstance(public_key, bytearray):
+        return bytes(public_key)
+    if isinstance(public_key, dict):
+        return cbor.encode(public_key)
+    try:
+        return cbor.encode(dict(public_key))  # type: ignore[arg-type]
+    except Exception:
+        return cbor.encode(public_key)
