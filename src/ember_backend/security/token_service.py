@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Annotated
@@ -28,6 +29,7 @@ class TokenService:
         payload = {
             "sub": user_id,
             "device_id": device_id,
+            "jti": str(uuid.uuid4()),
             "iss": self._settings.jwt_issuer,
             "iat": int(now.timestamp()),
             "exp": int((now + timedelta(minutes=self._settings.jwt_ttl_minutes)).timestamp()),

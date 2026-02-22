@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import Session
 
-from ember_backend.model.entities import AuthChallenge, Device, PasskeyCredential, User, UserPasswordCredential
+from ember_backend.model.entities import AuthChallenge, Device, PasskeyCredential, RefreshToken, User, UserPasswordCredential
 from ember_backend.support.utils import utcnow
 
 
@@ -97,6 +97,44 @@ class AuthRepository:
 
     def save_password_credential(self, credential: UserPasswordCredential) -> None:
         self.db.add(credential)
+
+    def create_refresh_token(self, token_hash: str, user_id: str, device_id: str, expires_at: datetime) -> RefreshToken:
+        token = RefreshToken(
+            token_hash=token_hash,
+            user_id=user_id,
+            device_id=device_id,
+            expires_at=expires_at,
+        )
+        self.db.add(token)
+        self.db.flush()
+        return token
+
+    def get_active_refresh_token(self, token_hash: str, device_id: str) -> RefreshToken | None:
+        return self.db.scalar(
+            select(RefreshToken).where(
+                and_(
+                    RefreshToken.token_hash == token_hash,
+                    RefreshToken.device_id == device_id,
+                    RefreshToken.revoked_at.is_(None),
+                    RefreshToken.expires_at > utcnow(),
+                )
+            )
+        )
+
+    def revoke_active_refresh_tokens_for_device(self, user_id: str, device_id: str) -> None:
+        tokens = self.db.scalars(
+            select(RefreshToken).where(
+                and_(
+                    RefreshToken.user_id == user_id,
+                    RefreshToken.device_id == device_id,
+                    RefreshToken.revoked_at.is_(None),
+                    RefreshToken.expires_at > utcnow(),
+                )
+            )
+        ).all()
+        now = utcnow()
+        for token in tokens:
+            token.revoked_at = now
 
     def create_device_for_user(self, device_id: str, user_id: str, platform: str = "ios") -> Device:
         device = Device(id=device_id, user_id=user_id, platform=platform, last_seen=utcnow())

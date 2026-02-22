@@ -41,6 +41,13 @@ WEBAUTHN_MODE=stub
 AASA_APP_IDS=ABCDE12345.com.example.emberpulse
 ```
 
+### Token Environment Values
+- `JWT_TTL_MINUTES`
+  - Access token lifetime in minutes.
+- `REFRESH_TOKEN_TTL_DAYS`
+  - Refresh token lifetime in days.
+  - Default is `3650` (10 years) for persistent login.
+
 ## Run
 ```sh
 uv sync --all-groups
@@ -80,5 +87,5 @@ docker compose --env-file .env.docker run --rm api uv run python scripts/create_
 1. Run tests.
 2. Smoke-check `/healthz`.
 3. Validate auth begin/finish and one export sync call.
-   Also validate `/v1/auth/password/register` and `/v1/auth/password/login`.
+   Also validate `/v1/auth/password/register`, `/v1/auth/password/login`, and `/v1/auth/token/refresh`.
 4. Record commands and outcomes in PR/commit notes.

@@ -5,19 +5,21 @@ from datetime import timedelta
 
 from ember_backend.config.settings import Settings
 from ember_backend.dto.api import (
+    AuthTokensResponse,
     AuthenticateBeginRequest,
     AuthenticateBeginResponse,
     AuthenticateFinishRequest,
     PasswordLoginRequest,
     PasswordRegisterRequest,
+    RefreshTokenRequest,
     RegisterBeginRequest,
     RegisterBeginResponse,
     RegisterFinishRequest,
-    TokenResponse,
 )
 from ember_backend.exception.api_error import APIError
 from ember_backend.model.entities import PasskeyCredential, UserPasswordCredential
 from ember_backend.security.password_service import PasswordService
+from ember_backend.security.refresh_token_service import RefreshTokenService
 from ember_backend.repository.auth_repository import AuthRepository
 from ember_backend.security.token_service import TokenService
 from ember_backend.security.webauthn_service import WebAuthnService
@@ -33,6 +35,7 @@ class AuthService:
         webauthn_service: WebAuthnService,
         token_service: TokenService,
         password_service: PasswordService,
+        refresh_token_service: RefreshTokenService,
         rate_limiter: InMemoryRateLimiter,
     ) -> None:
         self.repository = repository
@@ -40,6 +43,7 @@ class AuthService:
         self.webauthn_service = webauthn_service
         self.token_service = token_service
         self.password_service = password_service
+        self.refresh_token_service = refresh_token_service
         self.rate_limiter = rate_limiter
 
     def register_begin(self, payload: RegisterBeginRequest) -> RegisterBeginResponse:
@@ -69,7 +73,7 @@ class AuthService:
             timeoutMs=60000,
         )
 
-    def register_finish(self, payload: RegisterFinishRequest) -> TokenResponse:
+    def register_finish(self, payload: RegisterFinishRequest) -> AuthTokensResponse:
         self._enforce_rate_limit(payload.deviceId)
 
         device = self.repository.get_device(payload.deviceId)
@@ -109,10 +113,9 @@ class AuthService:
 
         self.repository.mark_challenge_used(challenge)
         self.repository.touch_device(device)
+        response = self._issue_auth_tokens(user_id=device.user_id, device_id=device.id)
         self.repository.commit()
-
-        token = self.token_service.create_access_token(user_id=device.user_id, device_id=device.id)
-        return TokenResponse(token=token)
+        return response
 
     def authenticate_begin(self, payload: AuthenticateBeginRequest) -> AuthenticateBeginResponse:
         self._enforce_rate_limit(payload.deviceId)
@@ -143,7 +146,7 @@ class AuthService:
             timeoutMs=60000,
         )
 
-    def authenticate_finish(self, payload: AuthenticateFinishRequest) -> TokenResponse:
+    def authenticate_finish(self, payload: AuthenticateFinishRequest) -> AuthTokensResponse:
         self._enforce_rate_limit(payload.deviceId)
 
         device = self.repository.get_device(payload.deviceId)
@@ -168,12 +171,11 @@ class AuthService:
 
         self.repository.mark_challenge_used(challenge)
         self.repository.touch_device(device)
+        response = self._issue_auth_tokens(user_id=device.user_id, device_id=device.id)
         self.repository.commit()
+        return response
 
-        token = self.token_service.create_access_token(user_id=device.user_id, device_id=device.id)
-        return TokenResponse(token=token)
-
-    def password_register(self, payload: PasswordRegisterRequest) -> TokenResponse:
+    def password_register(self, payload: PasswordRegisterRequest) -> AuthTokensResponse:
         self._enforce_rate_limit(payload.deviceId)
         username = self._normalize_username(payload.username)
 
@@ -201,12 +203,11 @@ class AuthService:
             existing_for_user.updated_at = utcnow()
 
         self.repository.touch_device(device)
+        response = self._issue_auth_tokens(user_id=user.id, device_id=device.id)
         self.repository.commit()
+        return response
 
-        token = self.token_service.create_access_token(user_id=user.id, device_id=device.id)
-        return TokenResponse(token=token)
-
-    def password_login(self, payload: PasswordLoginRequest) -> TokenResponse:
+    def password_login(self, payload: PasswordLoginRequest) -> AuthTokensResponse:
         self._enforce_rate_limit(payload.deviceId)
         username = self._normalize_username(payload.username)
 
@@ -224,9 +225,25 @@ class AuthService:
         else:
             self.repository.touch_device(device)
 
+        response = self._issue_auth_tokens(user_id=credential.user_id, device_id=device.id)
         self.repository.commit()
-        token = self.token_service.create_access_token(user_id=credential.user_id, device_id=device.id)
-        return TokenResponse(token=token)
+        return response
+
+    def refresh_access_token(self, payload: RefreshTokenRequest) -> AuthTokensResponse:
+        self._enforce_rate_limit(payload.deviceId)
+        token_hash = self.refresh_token_service.hash_token(payload.refreshToken)
+        refresh_token = self.repository.get_active_refresh_token(token_hash, payload.deviceId)
+        if refresh_token is None:
+            raise APIError(401, "invalid_token", "Invalid refresh token")
+
+        device = self.repository.get_device(payload.deviceId)
+        if device is None or device.user_id != refresh_token.user_id:
+            raise APIError(401, "invalid_token", "Invalid refresh token")
+
+        self.repository.touch_device(device)
+        response = self._issue_auth_tokens(user_id=refresh_token.user_id, device_id=device.id)
+        self.repository.commit()
+        return response
 
     def _enforce_rate_limit(self, key: str) -> None:
         allowed, retry_after = self.rate_limiter.allow(key)
@@ -245,3 +262,17 @@ class AuthService:
         if not normalized:
             raise APIError(400, "invalid_request", "username must not be empty")
         return normalized
+
+    def _issue_auth_tokens(self, *, user_id: str, device_id: str) -> AuthTokensResponse:
+        self.repository.revoke_active_refresh_tokens_for_device(user_id=user_id, device_id=device_id)
+        refresh_token = self.refresh_token_service.generate()
+        refresh_token_hash = self.refresh_token_service.hash_token(refresh_token)
+        refresh_token_expiry = utcnow() + timedelta(days=self.settings.refresh_token_ttl_days)
+        self.repository.create_refresh_token(
+            token_hash=refresh_token_hash,
+            user_id=user_id,
+            device_id=device_id,
+            expires_at=refresh_token_expiry,
+        )
+        access_token = self.token_service.create_access_token(user_id=user_id, device_id=device_id)
+        return AuthTokensResponse(token=access_token, refreshToken=refresh_token)

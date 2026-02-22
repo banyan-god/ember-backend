@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tests.helpers import assert_error_schema, build_client_data, register_and_get_token
+from tests.helpers import assert_error_schema, build_client_data, register_and_get_auth_tokens, register_and_get_token
 
 
 def test_aasa_well_known_endpoint(client) -> None:
@@ -42,6 +42,7 @@ def test_password_register_and_login_flow(client) -> None:
     )
     assert register_response.status_code == 200
     assert isinstance(register_response.json()["token"], str)
+    assert isinstance(register_response.json()["refreshToken"], str)
 
     login_response = client.post(
         "/v1/auth/password/login",
@@ -53,6 +54,7 @@ def test_password_register_and_login_flow(client) -> None:
     )
     assert login_response.status_code == 200
     assert isinstance(login_response.json()["token"], str)
+    assert isinstance(login_response.json()["refreshToken"], str)
 
 
 def test_password_register_rejects_duplicate_username(client) -> None:
@@ -215,6 +217,7 @@ def test_register_and_authenticate_flow(client) -> None:
     )
     assert finish.status_code == 200
     assert isinstance(finish.json()["token"], str) and finish.json()["token"]
+    assert isinstance(finish.json()["refreshToken"], str) and finish.json()["refreshToken"]
 
 
 def test_authenticate_finish_rejects_unknown_credential(client) -> None:
@@ -254,3 +257,54 @@ def test_export_requires_token(client) -> None:
         },
     )
     assert_error_schema(response, expected_code="unauthorized", expected_status=401)
+
+
+def test_refresh_token_rotates_and_rejects_reuse(client) -> None:
+    register_response = client.post(
+        "/v1/auth/password/register",
+        json={
+            "deviceId": "refresh-device-1",
+            "username": "refresh@example.com",
+            "password": "StrongPassword123!",
+        },
+    )
+    assert register_response.status_code == 200
+    first_tokens = register_response.json()
+    assert isinstance(first_tokens["token"], str) and first_tokens["token"]
+    assert isinstance(first_tokens["refreshToken"], str) and first_tokens["refreshToken"]
+
+    refresh_response = client.post(
+        "/v1/auth/token/refresh",
+        json={
+            "deviceId": "refresh-device-1",
+            "refreshToken": first_tokens["refreshToken"],
+        },
+    )
+    assert refresh_response.status_code == 200
+    second_tokens = refresh_response.json()
+    assert isinstance(second_tokens["token"], str) and second_tokens["token"]
+    assert isinstance(second_tokens["refreshToken"], str) and second_tokens["refreshToken"]
+    assert second_tokens["token"] != first_tokens["token"]
+    assert second_tokens["refreshToken"] != first_tokens["refreshToken"]
+
+    reused_response = client.post(
+        "/v1/auth/token/refresh",
+        json={
+            "deviceId": "refresh-device-1",
+            "refreshToken": first_tokens["refreshToken"],
+        },
+    )
+    assert_error_schema(reused_response, expected_code="invalid_token", expected_status=401)
+
+
+def test_refresh_token_rejects_wrong_device(client) -> None:
+    _, refresh_token, _ = register_and_get_auth_tokens(client, device_id="refresh-device-2")
+
+    response = client.post(
+        "/v1/auth/token/refresh",
+        json={
+            "deviceId": "refresh-device-wrong",
+            "refreshToken": refresh_token,
+        },
+    )
+    assert_error_schema(response, expected_code="invalid_token", expected_status=401)

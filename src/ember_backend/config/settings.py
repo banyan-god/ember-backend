@@ -27,7 +27,8 @@ class Settings(BaseSettings):
 
     jwt_secret: str = Field(default="ember-dev-secret-change-me-please-rotate-32-bytes", alias="JWT_SECRET")
     jwt_issuer: str = Field(default="ember-backend", alias="JWT_ISSUER")
-    jwt_ttl_minutes: int = Field(default=45, alias="JWT_TTL_MINUTES")
+    jwt_ttl_minutes: int = Field(default=45, ge=1, alias="JWT_TTL_MINUTES")
+    refresh_token_ttl_days: int = Field(default=3650, ge=1, alias="REFRESH_TOKEN_TTL_DAYS")
 
     webauthn_rp_id: str = Field(default="example.com", alias="WEBAUTHN_RP_ID")
     webauthn_allowed_origins: str = Field(default="https://example.com", alias="WEBAUTHN_ALLOWED_ORIGINS")

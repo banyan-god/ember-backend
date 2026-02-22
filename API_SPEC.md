@@ -61,7 +61,8 @@ Request:
 Response:
 ```json
 {
-  "token": "jwt-or-opaque-token"
+  "token": "jwt-or-opaque-token",
+  "refreshToken": "opaque-refresh-token"
 }
 ```
 
@@ -102,7 +103,8 @@ Request:
 Response:
 ```json
 {
-  "token": "jwt-or-opaque-token"
+  "token": "jwt-or-opaque-token",
+  "refreshToken": "opaque-refresh-token"
 }
 ```
 
@@ -123,7 +125,8 @@ Request:
 Response:
 ```json
 {
-  "token": "jwt-or-opaque-token"
+  "token": "jwt-or-opaque-token",
+  "refreshToken": "opaque-refresh-token"
 }
 ```
 
@@ -147,13 +150,37 @@ Request:
 Response:
 ```json
 {
-  "token": "jwt-or-opaque-token"
+  "token": "jwt-or-opaque-token",
+  "refreshToken": "opaque-refresh-token"
 }
 ```
 
 Behavior:
 - Returns `401 invalid_credentials` for unknown username or wrong password.
 - Returns `409 conflict` if `deviceId` is already bound to a different user.
+
+### POST /v1/auth/token/refresh
+Rotate refresh token and issue a new access token pair.
+
+Request:
+```json
+{
+  "deviceId": "uuid",
+  "refreshToken": "opaque-refresh-token"
+}
+```
+
+Response:
+```json
+{
+  "token": "jwt-or-opaque-token",
+  "refreshToken": "opaque-refresh-token"
+}
+```
+
+Behavior:
+- Returns `401 invalid_token` when refresh token is invalid, expired, revoked, or used with the wrong device.
+- Refresh tokens are single-use and rotated on every successful refresh.
 
 ## Export
 
@@ -275,5 +302,6 @@ Response:
 ## Notes
 - Server should treat `(deviceId, source, type, start, end, sourceName)` as idempotent for health samples.
 - Passkey endpoints should verify challenge/nonce and bind credential to the user.
-- Token can be JWT or opaque; must be accepted by `Authorization` header.
+- `token` is a short-lived JWT for `Authorization` header.
+- `refreshToken` is long-lived and rotates on each refresh call.
 - Backend must accept `deviceId`‑only bootstrap for registration and map it to a user record.

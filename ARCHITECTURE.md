@@ -2,9 +2,10 @@
 
 ## Core Flow
 1. Device requests passkey registration/authentication challenge.
-2. Backend validates WebAuthn response and issues a short-lived bearer token.
-3. Client uploads source payloads to `/v1/export/sync`.
-4. Backend persists raw batch payload + normalized records and returns deterministic acknowledgement.
+2. Backend validates WebAuthn/password auth and issues access + refresh tokens.
+3. Client rotates refresh token through `/v1/auth/token/refresh` to keep session alive.
+4. Client uploads source payloads to `/v1/export/sync`.
+5. Backend persists raw batch payload + normalized records and returns deterministic acknowledgement.
 
 ## Key Components
 - `controller/*`: route/controller layer.

@@ -69,7 +69,10 @@ Request:
 ```
 Response:
 ```json
-{ "token": "jwt-or-opaque-token" }
+{
+  "token": "jwt-or-opaque-token",
+  "refreshToken": "opaque-refresh-token"
+}
 ```
 Validation:
 - Verify challenge, origin, RP ID, and attestation per WebAuthn.
@@ -109,7 +112,10 @@ Request:
 ```
 Response:
 ```json
-{ "token": "jwt-or-opaque-token" }
+{
+  "token": "jwt-or-opaque-token",
+  "refreshToken": "opaque-refresh-token"
+}
 ```
 Validation:
 - Verify challenge, origin, RP ID, signature, and sign count.
@@ -117,7 +123,9 @@ Validation:
 
 ### Token Rules
 - Short‑lived access token (e.g., 30–60 minutes).
-- Optional refresh token strategy if needed later.
+- Long-lived refresh token (default 3650 days) for persistent login.
+- Refresh tokens are rotated on every successful refresh call.
+- Refresh tokens are device-bound.
 
 ### 3.5 Username/Password Authentication (Fallback)
 Backend also supports username/password authentication for clients that cannot use passkeys.
@@ -134,7 +142,10 @@ Request:
 ```
 Response:
 ```json
-{ "token": "jwt-or-opaque-token" }
+{
+  "token": "jwt-or-opaque-token",
+  "refreshToken": "opaque-refresh-token"
+}
 ```
 Rules:
 - Normalize username to lowercase.
@@ -154,12 +165,36 @@ Request:
 ```
 Response:
 ```json
-{ "token": "jwt-or-opaque-token" }
+{
+  "token": "jwt-or-opaque-token",
+  "refreshToken": "opaque-refresh-token"
+}
 ```
 Rules:
 - Return `401 invalid_credentials` for invalid username/password.
 - Keep device-token binding semantics consistent with passkey flow.
 - Return `409 conflict` when logging into a device bound to another user.
+
+### Refresh
+`POST /v1/auth/token/refresh`
+Request:
+```json
+{
+  "deviceId": "uuid",
+  "refreshToken": "opaque-refresh-token"
+}
+```
+Response:
+```json
+{
+  "token": "jwt-or-opaque-token",
+  "refreshToken": "opaque-refresh-token"
+}
+```
+Rules:
+- Reject invalid/expired/revoked refresh token with `401 invalid_token`.
+- Reject refresh token for wrong device with `401 invalid_token`.
+- Rotate refresh token after each successful refresh.
 
 ## 4. Export API
 ### 4.1 Sync
@@ -194,6 +229,7 @@ Minimum tables (or equivalent collections):
 - `devices` (id, user_id, platform, last_seen)
 - `passkey_credentials` (id, user_id, public_key, sign_count, rp_id, created_at)
 - `user_password_credentials` (id, user_id, username, password_hash, created_at, updated_at)
+- `refresh_tokens` (id, token_hash, user_id, device_id, expires_at, created_at, revoked_at)
 - `export_batches` (id, user_id, device_id, source, reason, range_start, range_end, received_at, payload_json)
 
 Optional normalized tables:

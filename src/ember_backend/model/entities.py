@@ -18,6 +18,7 @@ class User(Base):
     devices: Mapped[list["Device"]] = relationship(back_populates="user")
     credentials: Mapped[list["PasskeyCredential"]] = relationship(back_populates="user")
     password_credential: Mapped["UserPasswordCredential | None"] = relationship(back_populates="user", uselist=False)
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user")
 
 
 class Device(Base):
@@ -30,6 +31,7 @@ class Device(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="devices")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="device")
 
 
 class PasskeyCredential(Base):
@@ -74,6 +76,21 @@ class AuthChallenge(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    device_id: Mapped[str] = mapped_column(String(128), ForeignKey("devices.id"), nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+
+    user: Mapped["User"] = relationship(back_populates="refresh_tokens")
+    device: Mapped["Device"] = relationship(back_populates="refresh_tokens")
 
 
 class ExportBatch(Base):

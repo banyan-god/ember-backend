@@ -3,6 +3,7 @@
 Python backend for Ember Pulse with:
 - Passkey auth endpoints under `/v1/auth/passkey/*`
 - Username/password auth endpoints under `/v1/auth/password/*`
+- Refresh endpoint under `/v1/auth/token/refresh`
 - Export ingestion endpoint `/v1/export/sync`
 - SQL Server persistence (raw + normalized export data)
 - Idempotent export handling and health sample dedupe
@@ -93,10 +94,21 @@ Auth and passkey settings:
 - `JWT_SECRET`
 - `JWT_ISSUER`
 - `JWT_TTL_MINUTES`
+- `REFRESH_TOKEN_TTL_DAYS`
 - `WEBAUTHN_RP_ID`
 - `WEBAUTHN_ALLOWED_ORIGINS`
 - `WEBAUTHN_MODE` (`strict` or `stub`)
 - `AASA_APP_IDS` (comma-separated `TEAMID.bundleid` entries)
+
+Token behavior:
+- Auth endpoints (`passkey` and `password`) return:
+  - `token`: short-lived access JWT.
+  - `refreshToken`: long-lived opaque token.
+- Refresh access token pair with:
+  - `POST /v1/auth/token/refresh`
+  - body: `{ "deviceId": "...", "refreshToken": "..." }`
+  - response: `{ "token": "...", "refreshToken": "..." }`
+  - refresh token rotates each successful call.
 
 ## WebAuthn Env Setup
 Use these rules when setting WebAuthn variables:

@@ -46,8 +46,9 @@ class AuthenticateFinishRequest(BaseModel):
     signature: str
 
 
-class TokenResponse(BaseModel):
+class AuthTokensResponse(BaseModel):
     token: str
+    refreshToken: str
 
 
 class PasswordRegisterRequest(BaseModel):
@@ -60,6 +61,11 @@ class PasswordLoginRequest(BaseModel):
     deviceId: str
     username: str = Field(min_length=3, max_length=255)
     password: str = Field(min_length=8, max_length=128)
+
+
+class RefreshTokenRequest(BaseModel):
+    deviceId: str
+    refreshToken: str = Field(min_length=32, max_length=1024)
 
 
 class DateRange(BaseModel):

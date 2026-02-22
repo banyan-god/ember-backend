@@ -4,13 +4,13 @@ from fastapi import APIRouter, Depends
 
 from ember_backend.controller.dependencies import get_auth_service
 from ember_backend.dto.api import (
+    AuthTokensResponse,
     AuthenticateBeginRequest,
     AuthenticateBeginResponse,
     AuthenticateFinishRequest,
     RegisterBeginRequest,
     RegisterBeginResponse,
     RegisterFinishRequest,
-    TokenResponse,
 )
 from ember_backend.service.auth_service import AuthService
 
@@ -22,8 +22,8 @@ def register_begin(payload: RegisterBeginRequest, service: AuthService = Depends
     return service.register_begin(payload)
 
 
-@router.post("/register/finish", response_model=TokenResponse)
-def register_finish(payload: RegisterFinishRequest, service: AuthService = Depends(get_auth_service)) -> TokenResponse:
+@router.post("/register/finish", response_model=AuthTokensResponse)
+def register_finish(payload: RegisterFinishRequest, service: AuthService = Depends(get_auth_service)) -> AuthTokensResponse:
     return service.register_finish(payload)
 
 
@@ -35,9 +35,9 @@ def authenticate_begin(
     return service.authenticate_begin(payload)
 
 
-@router.post("/authenticate/finish", response_model=TokenResponse)
+@router.post("/authenticate/finish", response_model=AuthTokensResponse)
 def authenticate_finish(
     payload: AuthenticateFinishRequest,
     service: AuthService = Depends(get_auth_service),
-) -> TokenResponse:
+) -> AuthTokensResponse:
     return service.authenticate_finish(payload)

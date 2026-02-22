@@ -7,6 +7,7 @@ from ember_backend.config.database import get_db_session
 from ember_backend.repository.auth_repository import AuthRepository
 from ember_backend.repository.export_repository import ExportRepository
 from ember_backend.security.password_service import PasswordService
+from ember_backend.security.refresh_token_service import RefreshTokenService
 from ember_backend.service.auth_service import AuthService
 from ember_backend.service.export_service import ExportService
 
@@ -18,6 +19,7 @@ def get_auth_service(request: Request, db: Session = Depends(get_db_session)) ->
         webauthn_service=request.app.state.webauthn,
         token_service=request.app.state.token_service,
         password_service=PasswordService(),
+        refresh_token_service=RefreshTokenService(),
         rate_limiter=request.app.state.rate_limiter,
     )
 

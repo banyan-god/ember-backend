@@ -30,6 +30,30 @@ def register_and_get_token(client, *, device_id: str = "device-1", credential_ra
     return finish_response.json()["token"], credential_id
 
 
+def register_and_get_auth_tokens(
+    client,
+    *,
+    device_id: str = "device-1",
+    credential_raw: bytes = b"cred-1",
+) -> tuple[str, str, str]:
+    begin_response = client.post("/v1/auth/passkey/register/begin", json={"deviceId": device_id})
+    assert begin_response.status_code == 200
+    begin_body = begin_response.json()
+
+    credential_id = b64url_encode(credential_raw)
+    finish_payload = {
+        "deviceId": device_id,
+        "userId": begin_body["userId"],
+        "credentialId": credential_id,
+        "attestationObject": b64url_encode(b"attestation"),
+        "clientDataJSON": build_client_data(begin_body["challenge"], "webauthn.create"),
+    }
+    finish_response = client.post("/v1/auth/passkey/register/finish", json=finish_payload)
+    assert finish_response.status_code == 200
+    body = finish_response.json()
+    return body["token"], body["refreshToken"], credential_id
+
+
 def assert_error_schema(response, *, expected_code: str, expected_status: int) -> dict[str, Any]:
     assert response.status_code == expected_status
     body = response.json()
