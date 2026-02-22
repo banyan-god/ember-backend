@@ -45,7 +45,7 @@ Python backend for Ember Pulse with:
 Server runs on `http://0.0.0.0:8080`.
 
 ## Docker
-Run backend + SQL Server with Docker Compose:
+Run backend container with your existing SQL Server:
 
 1. Create Docker env file:
    ```bash
@@ -65,8 +65,12 @@ Run backend + SQL Server with Docker Compose:
    ```
 
 Notes:
-- `docker-compose.yml` starts 3 services: `sqlserver`, `db-init`, `api`.
-- `db-init` creates the `Ember` database before API startup.
+- `docker-compose.yml` starts only `api`; it expects an external SQL Server.
+- Set `SQLSERVER_HOST` in `.env.docker` to your SQL Server host/IP.
+- If you need to create the database from the container:
+  ```bash
+  docker compose --env-file .env.docker run --rm api uv run python scripts/create_database.py
+  ```
 - Default `WEBAUTHN_MODE` in Docker is `stub` for local development. Set `WEBAUTHN_MODE=strict` in `.env.docker` for full verification.
 
 ## Test
@@ -91,6 +95,29 @@ Auth and passkey settings:
 - `WEBAUTHN_RP_ID`
 - `WEBAUTHN_ALLOWED_ORIGINS`
 - `WEBAUTHN_MODE` (`strict` or `stub`)
+
+## WebAuthn Env Setup
+Use these rules when setting WebAuthn variables:
+
+- `WEBAUTHN_RP_ID`
+  - Domain only (no scheme, no path).
+  - Must match iOS passkey relying party identifier.
+  - Should align with Associated Domains (`webcredentials:<rp_id>`).
+  - Example: `WEBAUTHN_RP_ID=your-domain.com`
+
+- `WEBAUTHN_ALLOWED_ORIGINS`
+  - Comma-separated HTTPS origins.
+  - Include scheme (`https://`), no trailing slash.
+  - Must correspond to the RP ID domain(s).
+  - Example: `WEBAUTHN_ALLOWED_ORIGINS=https://your-domain.com,https://staging.your-domain.com`
+
+- `WEBAUTHN_MODE`
+  - `stub`: local/dev mode with relaxed verification.
+  - `strict`: full WebAuthn verification for staging/production.
+
+Recommended:
+- Local/dev: `WEBAUTHN_MODE=stub` with your tunnel/dev HTTPS domain.
+- Staging/prod: `WEBAUTHN_MODE=strict` with real deployed HTTPS origins.
 
 ## API
 Implements the contract defined in:

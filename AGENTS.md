@@ -37,6 +37,7 @@
   cp .env.docker.example .env.docker
   docker compose --env-file .env.docker up --build -d
   ```
+  This stack runs API only and uses an external SQL Server from `.env.docker`.
 
 ## Coding Style & Naming Conventions
 - Python indentation: 4 spaces; explicit typing for non-trivial paths.

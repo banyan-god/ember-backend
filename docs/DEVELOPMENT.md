@@ -19,6 +19,24 @@ Ember Backend is a Python API service for Ember Pulse passkey auth and multi-sou
    uv run python scripts/create_database.py
    ```
 
+### WebAuthn Environment Values
+- `WEBAUTHN_RP_ID`
+  - Domain only (no `https://`, no path).
+  - Must match the iOS relying party identifier and associated domains.
+- `WEBAUTHN_ALLOWED_ORIGINS`
+  - Comma-separated HTTPS origins.
+  - Example: `https://your-domain.com,https://staging.your-domain.com`
+- `WEBAUTHN_MODE`
+  - `stub` for local/dev.
+  - `strict` for staging/production.
+
+Example:
+```sh
+WEBAUTHN_RP_ID=your-domain.com
+WEBAUTHN_ALLOWED_ORIGINS=https://your-domain.com
+WEBAUTHN_MODE=stub
+```
+
 ## Run
 ```sh
 uv sync --all-groups
@@ -33,9 +51,15 @@ uv run pytest
 ## Docker Workflow
 ```sh
 cp .env.docker.example .env.docker
+# Set SQLSERVER_HOST/credentials for your existing SQL Server
 docker compose --env-file .env.docker up --build -d
 curl http://localhost:8080/healthz
 docker compose --env-file .env.docker down
+```
+
+Optional database bootstrap from container:
+```sh
+docker compose --env-file .env.docker run --rm api uv run python scripts/create_database.py
 ```
 
 ## Validation Loop (Required)
