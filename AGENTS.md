@@ -85,4 +85,5 @@
 - Keep `.env` and `.env.docker` local only.
 - Use strong `JWT_SECRET` (32+ bytes) in non-dev environments.
 - Keep `WEBAUTHN_RP_ID` and `WEBAUTHN_ALLOWED_ORIGINS` aligned with deployment domains.
+- Keep `AASA_APP_IDS` aligned to the real Apple `TEAMID.bundleid` used by the iOS app.
 - Prefer TLS-terminated deployments and least-privilege DB credentials.

@@ -29,12 +29,16 @@ Ember Backend is a Python API service for Ember Pulse passkey auth and multi-sou
 - `WEBAUTHN_MODE`
   - `stub` for local/dev.
   - `strict` for staging/production.
+- `AASA_APP_IDS`
+  - Comma-separated Apple app identifiers in `TEAMID.bundleid` format.
+  - Used in the served AASA file for passkey association.
 
 Example:
 ```sh
 WEBAUTHN_RP_ID=your-domain.com
 WEBAUTHN_ALLOWED_ORIGINS=https://your-domain.com
 WEBAUTHN_MODE=stub
+AASA_APP_IDS=ABCDE12345.com.example.emberpulse
 ```
 
 ## Run
@@ -61,6 +65,16 @@ Optional database bootstrap from container:
 ```sh
 docker compose --env-file .env.docker run --rm api uv run python scripts/create_database.py
 ```
+
+## AASA Checklist (Passkeys on Device)
+1. Set `AASA_APP_IDS` to your real `TEAMID.bundleid`.
+2. Confirm iOS entitlements include `webcredentials:<WEBAUTHN_RP_ID>`.
+3. Verify both endpoints return `200` and valid JSON:
+   ```sh
+   curl -i https://<domain>/.well-known/apple-app-site-association
+   curl -i https://<domain>/apple-app-site-association
+   ```
+4. Confirm payload contains your app identifier under `webcredentials.apps`.
 
 ## Validation Loop (Required)
 1. Run tests.

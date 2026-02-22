@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     webauthn_allowed_origins: str = Field(default="https://example.com", alias="WEBAUTHN_ALLOWED_ORIGINS")
     webauthn_mode: str = Field(default="strict", alias="WEBAUTHN_MODE")
     challenge_ttl_seconds: int = Field(default=300, alias="CHALLENGE_TTL_SECONDS")
+    aasa_app_ids: str = Field(default="", alias="AASA_APP_IDS")
 
     rate_limit_per_minute: int = Field(default=60, alias="RATE_LIMIT_PER_MINUTE")
     suggested_sync_after_seconds: int = Field(default=21600, alias="SUGGESTED_SYNC_AFTER_SECONDS")
@@ -40,6 +41,10 @@ class Settings(BaseSettings):
     @property
     def allowed_origins(self) -> set[str]:
         return {x.strip() for x in self.webauthn_allowed_origins.split(",") if x.strip()}
+
+    @property
+    def apple_app_site_association_app_ids(self) -> list[str]:
+        return [x.strip() for x in self.aasa_app_ids.split(",") if x.strip()]
 
     @property
     def sqlalchemy_database_url(self) -> str:

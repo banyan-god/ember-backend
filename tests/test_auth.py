@@ -3,6 +3,28 @@ from __future__ import annotations
 from tests.helpers import assert_error_schema, build_client_data, register_and_get_token
 
 
+def test_aasa_well_known_endpoint(client) -> None:
+    response = client.get("/.well-known/apple-app-site-association")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json() == {
+        "webcredentials": {
+            "apps": ["ABCDE12345.com.sabareesh.emberpulse"],
+        }
+    }
+
+
+def test_aasa_root_endpoint(client) -> None:
+    response = client.get("/apple-app-site-association")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json() == {
+        "webcredentials": {
+            "apps": ["ABCDE12345.com.sabareesh.emberpulse"],
+        }
+    }
+
+
 def test_healthz_endpoint(client) -> None:
     response = client.get("/healthz")
     assert response.status_code == 200

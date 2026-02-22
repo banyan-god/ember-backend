@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from ember_backend.config.database import build_engine_and_session, create_schema
 from ember_backend.config.settings import Settings, get_settings
+from ember_backend.controller.aasa_controller import router as aasa_router
 from ember_backend.controller.auth_controller import router as auth_router
 from ember_backend.controller.export_controller import router as export_router
 from ember_backend.controller.health_controller import router as health_router
@@ -52,6 +53,7 @@ def create_app(
 
     register_exception_handlers(app)
 
+    app.include_router(aasa_router)
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(export_router)

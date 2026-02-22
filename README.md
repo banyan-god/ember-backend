@@ -95,6 +95,7 @@ Auth and passkey settings:
 - `WEBAUTHN_RP_ID`
 - `WEBAUTHN_ALLOWED_ORIGINS`
 - `WEBAUTHN_MODE` (`strict` or `stub`)
+- `AASA_APP_IDS` (comma-separated `TEAMID.bundleid` entries)
 
 ## WebAuthn Env Setup
 Use these rules when setting WebAuthn variables:
@@ -118,6 +119,27 @@ Use these rules when setting WebAuthn variables:
 Recommended:
 - Local/dev: `WEBAUTHN_MODE=stub` with your tunnel/dev HTTPS domain.
 - Staging/prod: `WEBAUTHN_MODE=strict` with real deployed HTTPS origins.
+
+## Apple App Site Association (AASA)
+This backend serves AASA at both Apple-supported paths:
+- `/.well-known/apple-app-site-association`
+- `/apple-app-site-association`
+
+Configure app bindings with:
+- `AASA_APP_IDS=TEAMID.com.your.bundleid[,TEAMID.com.your.otherbundle]`
+
+Example for Ember production:
+```env
+WEBAUTHN_RP_ID=ember.sabareesh.com
+WEBAUTHN_ALLOWED_ORIGINS=https://ember.sabareesh.com
+WEBAUTHN_MODE=strict
+AASA_APP_IDS=ABCDE12345.com.sabareesh.emberpulse
+```
+
+Verification checklist:
+1. `curl -i https://ember.sabareesh.com/.well-known/apple-app-site-association`
+2. `curl -i https://ember.sabareesh.com/apple-app-site-association`
+3. Confirm `HTTP 200` and JSON includes `webcredentials.apps` with your app id.
 
 ## API
 Implements the contract defined in:

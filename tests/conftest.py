@@ -23,6 +23,7 @@ def test_settings(tmp_path: Path) -> Settings:
         WEBAUTHN_RP_ID="example.com",
         WEBAUTHN_ALLOWED_ORIGINS="https://example.com",
         WEBAUTHN_MODE="stub",
+        AASA_APP_IDS="ABCDE12345.com.sabareesh.emberpulse",
     )
 
 
