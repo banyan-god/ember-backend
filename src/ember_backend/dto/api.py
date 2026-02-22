@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, model_validator
 
@@ -111,6 +111,15 @@ class SamplePayload(BaseModel):
     categoryValue: int | None = None
     workout: WorkoutPayload | None = None
     correlation: list["SamplePayload"] | None = None
+    document: dict[str, Any] | None = None
+    clinicalRecord: dict[str, Any] | None = None
+    electrocardiogram: dict[str, Any] | None = None
+    audiogram: dict[str, Any] | None = None
+    visionPrescription: dict[str, Any] | None = None
+    stateOfMind: dict[str, Any] | None = None
+    medicationDoseEvent: dict[str, Any] | None = None
+    workoutRoute: dict[str, Any] | None = None
+    heartbeatSeries: dict[str, Any] | None = None
 
 
 class CharacteristicPayload(BaseModel):
@@ -138,6 +147,7 @@ class HealthPayload(BaseModel):
     samples: list[SamplePayload] = []
     characteristics: list[CharacteristicPayload] = []
     activitySummaries: list[ActivitySummaryPayload] = []
+    userAnnotatedMedications: list[dict[str, Any]] = []
 
 
 class FinanceAccountPayload(BaseModel):

@@ -107,6 +107,7 @@ class ExportService:
             health_count += len(payload.health.samples)
             health_count += len(payload.health.characteristics)
             health_count += len(payload.health.activitySummaries)
+            health_count += len(payload.health.userAnnotatedMedications)
         if payload.finance:
             finance_count += len(payload.finance.accounts)
             finance_count += len(payload.finance.transactions)

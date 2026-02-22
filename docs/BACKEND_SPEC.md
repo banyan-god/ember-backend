@@ -208,6 +208,8 @@ Payload: see `API_SPEC.md`. Key validation rules:
 - `device.deviceId` must match authenticated user’s device.
 - `range` is required for `health.samples` batches, optional otherwise.
 - `health.samples[].metadata` must be stringified values.
+- Extended HealthKit sample fields (`document`, `clinicalRecord`, `electrocardiogram`, `audiogram`, `visionPrescription`, `stateOfMind`, `medicationDoseEvent`, `workoutRoute`, `heartbeatSeries`) are optional.
+- `health.userAnnotatedMedications` is optional.
 
 Response:
 ```json
@@ -234,6 +236,15 @@ Minimum tables (or equivalent collections):
 
 Optional normalized tables:
 - `health_samples` (batch_id, type, start, end, quantity_value, unit, category_value, source, device, metadata_json)
+- `health_documents` (batch_id, type, title, patient_name, author_name, custodian_name, document_data)
+- `health_clinical_records` (batch_id, type, display_name, resource_type, resource_id, fhir_json, source_url)
+- `health_ecg_measurements` (batch_id, sample_id, t_offset, voltage, unit)
+- `health_heartbeat_series` (batch_id, sample_id, t_offset, preceded_by_gap)
+- `health_workout_routes` (batch_id, sample_id, lat, lon, altitude, accuracy, speed, course, timestamp)
+- `health_audiograms` (batch_id, sample_id, frequency_hz, sensitivity_dbhl, side)
+- `health_state_of_mind` (batch_id, sample_id, kind, valence, labels, associations)
+- `health_medication_dose_events` (batch_id, sample_id, schedule_type, log_status, dose_qty, unit, concept_id)
+- `health_user_annotated_medications` (batch_id, nickname, is_archived, has_schedule, concept_id)
 - `health_characteristics` (batch_id, type, value)
 - `activity_summaries` (batch_id, date, active_energy, exercise_time, stand_hours, move_time)
 - `finance_accounts` (batch_id, id, name, type, currency_code)

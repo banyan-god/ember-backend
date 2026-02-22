@@ -238,7 +238,16 @@ Request (HealthKit example):
         },
         "categoryValue": null,
         "workout": null,
-        "correlation": null
+        "correlation": null,
+        "document": null,
+        "clinicalRecord": null,
+        "electrocardiogram": null,
+        "audiogram": null,
+        "visionPrescription": null,
+        "stateOfMind": null,
+        "medicationDoseEvent": null,
+        "workoutRoute": null,
+        "heartbeatSeries": null
       }
     ],
     "characteristics": [
@@ -253,9 +262,41 @@ Request (HealthKit example):
         "appleStandHours": 10,
         "appleMoveTime": 45
       }
-    ]
+    ],
+    "userAnnotatedMedications": []
   },
   "finance": null
+}
+```
+
+### HealthKit Sample Extensions (Optional Fields)
+Some HealthKit data types expose richer payloads beyond `quantity` and `categoryValue`. When present, the following optional fields are populated:
+- `document`: CDA document metadata + base64 XML (`dataFormat: "cda-xml-base64"`).
+- `clinicalRecord`: FHIR resource payload (raw JSON string or base64 if not UTF‑8).
+- `electrocardiogram`: ECG metadata plus voltage measurements.
+- `audiogram`: sensitivity points (legacy left/right values or per-test values).
+- `visionPrescription`: prescription type + issue/expiry dates.
+- `stateOfMind`: valence, labels, associations, classification.
+- `medicationDoseEvent`: schedule/log status + dose quantities.
+- `workoutRoute`: array of GPS points.
+- `heartbeatSeries`: heartbeat timestamps with gap markers.
+
+### User Annotated Medications
+Health payloads can also include user-annotated medication records:
+```json
+{
+  "nickname": "Evening aspirin",
+  "isArchived": false,
+  "hasSchedule": true,
+  "medication": {
+    "identifier": "HKHealthConceptIdentifier(...)",
+    "domain": "HKHealthConceptDomainMedication",
+    "displayText": "Aspirin",
+    "generalForm": "HKMedicationGeneralFormTablet",
+    "relatedCodings": [
+      { "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "version": null, "code": "1191" }
+    ]
+  }
 }
 ```
 
