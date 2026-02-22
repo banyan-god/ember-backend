@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
@@ -70,5 +71,20 @@ app = create_app()
 
 def main() -> None:
     import uvicorn
+    from uvicorn.config import LOGGING_CONFIG
 
-    uvicorn.run("ember_backend.main:app", host="0.0.0.0", port=8080, reload=False)
+    log_config = deepcopy(LOGGING_CONFIG)
+    log_config["formatters"]["default"]["fmt"] = "%(asctime)s %(levelprefix)s %(message)s"
+    log_config["formatters"]["default"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
+    log_config["formatters"]["access"]["fmt"] = (
+        '%(asctime)s %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
+    )
+    log_config["formatters"]["access"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
+
+    uvicorn.run(
+        "ember_backend.main:app",
+        host="0.0.0.0",
+        port=8080,
+        reload=False,
+        log_config=log_config,
+    )
