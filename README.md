@@ -2,6 +2,7 @@
 
 Python backend for Ember Pulse with:
 - Passkey auth endpoints under `/v1/auth/passkey/*`
+- Username/password auth endpoints under `/v1/auth/password/*`
 - Export ingestion endpoint `/v1/export/sync`
 - SQL Server persistence (raw + normalized export data)
 - Idempotent export handling and health sample dedupe

@@ -119,6 +119,48 @@ Validation:
 - Short‑lived access token (e.g., 30–60 minutes).
 - Optional refresh token strategy if needed later.
 
+### 3.5 Username/Password Authentication (Fallback)
+Backend also supports username/password authentication for clients that cannot use passkeys.
+
+### Register
+`POST /v1/auth/password/register`
+Request:
+```json
+{
+  "deviceId": "uuid",
+  "username": "user@example.com",
+  "password": "StrongPassword123!"
+}
+```
+Response:
+```json
+{ "token": "jwt-or-opaque-token" }
+```
+Rules:
+- Normalize username to lowercase.
+- Enforce global username uniqueness.
+- Hash password using a strong KDF (PBKDF2/Argon2/bcrypt class algorithms, never plaintext).
+- If credential exists for same user, update password hash.
+
+### Login
+`POST /v1/auth/password/login`
+Request:
+```json
+{
+  "deviceId": "uuid",
+  "username": "user@example.com",
+  "password": "StrongPassword123!"
+}
+```
+Response:
+```json
+{ "token": "jwt-or-opaque-token" }
+```
+Rules:
+- Return `401 invalid_credentials` for invalid username/password.
+- Keep device-token binding semantics consistent with passkey flow.
+- Return `409 conflict` when logging into a device bound to another user.
+
 ## 4. Export API
 ### 4.1 Sync
 `POST /v1/export/sync`
@@ -151,6 +193,7 @@ Minimum tables (or equivalent collections):
 - `users` (id, created_at)
 - `devices` (id, user_id, platform, last_seen)
 - `passkey_credentials` (id, user_id, public_key, sign_count, rp_id, created_at)
+- `user_password_credentials` (id, user_id, username, password_hash, created_at, updated_at)
 - `export_batches` (id, user_id, device_id, source, reason, range_start, range_end, received_at, payload_json)
 
 Optional normalized tables:

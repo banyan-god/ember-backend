@@ -17,6 +17,7 @@ class User(Base):
 
     devices: Mapped[list["Device"]] = relationship(back_populates="user")
     credentials: Mapped[list["PasskeyCredential"]] = relationship(back_populates="user")
+    password_credential: Mapped["UserPasswordCredential | None"] = relationship(back_populates="user", uselist=False)
 
 
 class Device(Base):
@@ -44,6 +45,22 @@ class PasskeyCredential(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="credentials")
+
+
+class UserPasswordCredential(Base):
+    __tablename__ = "user_password_credentials"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_user_password_credentials_user"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    username: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    user: Mapped["User"] = relationship(back_populates="password_credential")
 
 
 class AuthChallenge(Base):

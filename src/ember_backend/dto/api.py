@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, StrictStr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, model_validator
 
 
 class RegisterBeginRequest(BaseModel):
@@ -48,6 +48,18 @@ class AuthenticateFinishRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     token: str
+
+
+class PasswordRegisterRequest(BaseModel):
+    deviceId: str
+    username: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class PasswordLoginRequest(BaseModel):
+    deviceId: str
+    username: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=8, max_length=128)
 
 
 class DateRange(BaseModel):

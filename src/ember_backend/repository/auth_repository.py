@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import Session
 
-from ember_backend.model.entities import AuthChallenge, Device, PasskeyCredential, User
+from ember_backend.model.entities import AuthChallenge, Device, PasskeyCredential, User, UserPasswordCredential
 from ember_backend.support.utils import utcnow
 
 
@@ -86,8 +86,23 @@ class AuthRepository:
     def get_credential_by_id(self, credential_id: str) -> PasskeyCredential | None:
         return self.db.scalar(select(PasskeyCredential).where(PasskeyCredential.credential_id == credential_id))
 
+    def get_password_credential_by_username(self, username: str) -> UserPasswordCredential | None:
+        return self.db.scalar(select(UserPasswordCredential).where(UserPasswordCredential.username == username))
+
+    def get_password_credential_by_user_id(self, user_id: str) -> UserPasswordCredential | None:
+        return self.db.scalar(select(UserPasswordCredential).where(UserPasswordCredential.user_id == user_id))
+
     def save_credential(self, credential: PasskeyCredential) -> None:
         self.db.add(credential)
+
+    def save_password_credential(self, credential: UserPasswordCredential) -> None:
+        self.db.add(credential)
+
+    def create_device_for_user(self, device_id: str, user_id: str, platform: str = "ios") -> Device:
+        device = Device(id=device_id, user_id=user_id, platform=platform, last_seen=utcnow())
+        self.db.add(device)
+        self.db.flush()
+        return device
 
     def touch_device(self, device: Device) -> None:
         device.last_seen = utcnow()

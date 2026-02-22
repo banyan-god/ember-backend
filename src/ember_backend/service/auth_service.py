@@ -8,13 +8,16 @@ from ember_backend.dto.api import (
     AuthenticateBeginRequest,
     AuthenticateBeginResponse,
     AuthenticateFinishRequest,
+    PasswordLoginRequest,
+    PasswordRegisterRequest,
     RegisterBeginRequest,
     RegisterBeginResponse,
     RegisterFinishRequest,
     TokenResponse,
 )
 from ember_backend.exception.api_error import APIError
-from ember_backend.model.entities import PasskeyCredential
+from ember_backend.model.entities import PasskeyCredential, UserPasswordCredential
+from ember_backend.security.password_service import PasswordService
 from ember_backend.repository.auth_repository import AuthRepository
 from ember_backend.security.token_service import TokenService
 from ember_backend.security.webauthn_service import WebAuthnService
@@ -29,12 +32,14 @@ class AuthService:
         settings: Settings,
         webauthn_service: WebAuthnService,
         token_service: TokenService,
+        password_service: PasswordService,
         rate_limiter: InMemoryRateLimiter,
     ) -> None:
         self.repository = repository
         self.settings = settings
         self.webauthn_service = webauthn_service
         self.token_service = token_service
+        self.password_service = password_service
         self.rate_limiter = rate_limiter
 
     def register_begin(self, payload: RegisterBeginRequest) -> RegisterBeginResponse:
@@ -168,6 +173,61 @@ class AuthService:
         token = self.token_service.create_access_token(user_id=device.user_id, device_id=device.id)
         return TokenResponse(token=token)
 
+    def password_register(self, payload: PasswordRegisterRequest) -> TokenResponse:
+        self._enforce_rate_limit(payload.deviceId)
+        username = self._normalize_username(payload.username)
+
+        existing_by_username = self.repository.get_password_credential_by_username(username)
+        user, device = self.repository.get_or_create_user_by_device(payload.deviceId)
+
+        if existing_by_username and existing_by_username.user_id != user.id:
+            raise APIError(409, "conflict", "Username is already registered")
+
+        password_hash = self.password_service.hash_password(payload.password)
+        existing_for_user = self.repository.get_password_credential_by_user_id(user.id)
+        if existing_for_user is None:
+            self.repository.save_password_credential(
+                UserPasswordCredential(
+                    user_id=user.id,
+                    username=username,
+                    password_hash=password_hash,
+                )
+            )
+        else:
+            if existing_for_user.username != username and existing_by_username and existing_by_username.user_id != user.id:
+                raise APIError(409, "conflict", "Username is already registered")
+            existing_for_user.username = username
+            existing_for_user.password_hash = password_hash
+            existing_for_user.updated_at = utcnow()
+
+        self.repository.touch_device(device)
+        self.repository.commit()
+
+        token = self.token_service.create_access_token(user_id=user.id, device_id=device.id)
+        return TokenResponse(token=token)
+
+    def password_login(self, payload: PasswordLoginRequest) -> TokenResponse:
+        self._enforce_rate_limit(payload.deviceId)
+        username = self._normalize_username(payload.username)
+
+        credential = self.repository.get_password_credential_by_username(username)
+        if credential is None:
+            raise APIError(401, "invalid_credentials", "Invalid username or password")
+        if not self.password_service.verify_password(payload.password, credential.password_hash):
+            raise APIError(401, "invalid_credentials", "Invalid username or password")
+
+        device = self.repository.get_device(payload.deviceId)
+        if device is None:
+            device = self.repository.create_device_for_user(payload.deviceId, credential.user_id)
+        elif device.user_id != credential.user_id:
+            raise APIError(409, "conflict", "Device is already bound to a different user")
+        else:
+            self.repository.touch_device(device)
+
+        self.repository.commit()
+        token = self.token_service.create_access_token(user_id=credential.user_id, device_id=device.id)
+        return TokenResponse(token=token)
+
     def _enforce_rate_limit(self, key: str) -> None:
         allowed, retry_after = self.rate_limiter.allow(key)
         if allowed:
@@ -178,3 +238,10 @@ class AuthService:
             "Rate limit exceeded",
             details={"retryAfterSeconds": retry_after},
         )
+
+    @staticmethod
+    def _normalize_username(username: str) -> str:
+        normalized = username.strip().lower()
+        if not normalized:
+            raise APIError(400, "invalid_request", "username must not be empty")
+        return normalized

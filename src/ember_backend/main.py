@@ -13,6 +13,7 @@ from ember_backend.controller.aasa_controller import router as aasa_router
 from ember_backend.controller.auth_controller import router as auth_router
 from ember_backend.controller.export_controller import router as export_router
 from ember_backend.controller.health_controller import router as health_router
+from ember_backend.controller.password_auth_controller import router as password_auth_router
 from ember_backend.exception.handlers import register_exception_handlers
 from ember_backend.security.token_service import TokenService
 from ember_backend.security.webauthn_service import WebAuthnService, build_webauthn_service
@@ -56,6 +57,7 @@ def create_app(
     app.include_router(aasa_router)
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(password_auth_router)
     app.include_router(export_router)
 
     return app

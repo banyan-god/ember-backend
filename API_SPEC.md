@@ -106,6 +106,55 @@ Response:
 }
 ```
 
+## Auth (Username / Password)
+
+### POST /v1/auth/password/register
+Register (or set) username/password credentials for the user bound to `deviceId`.
+
+Request:
+```json
+{
+  "deviceId": "uuid",
+  "username": "user@example.com",
+  "password": "StrongPassword123!"
+}
+```
+
+Response:
+```json
+{
+  "token": "jwt-or-opaque-token"
+}
+```
+
+Behavior:
+- `username` is case-insensitive (normalized to lowercase).
+- `username` must be unique across users.
+- If a credential already exists for the current user, password is updated.
+
+### POST /v1/auth/password/login
+Authenticate with username/password and issue bearer token bound to `deviceId`.
+
+Request:
+```json
+{
+  "deviceId": "uuid",
+  "username": "user@example.com",
+  "password": "StrongPassword123!"
+}
+```
+
+Response:
+```json
+{
+  "token": "jwt-or-opaque-token"
+}
+```
+
+Behavior:
+- Returns `401 invalid_credentials` for unknown username or wrong password.
+- Returns `409 conflict` if `deviceId` is already bound to a different user.
+
 ## Export
 
 ### POST /v1/export/sync

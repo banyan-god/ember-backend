@@ -80,4 +80,5 @@ docker compose --env-file .env.docker run --rm api uv run python scripts/create_
 1. Run tests.
 2. Smoke-check `/healthz`.
 3. Validate auth begin/finish and one export sync call.
+   Also validate `/v1/auth/password/register` and `/v1/auth/password/login`.
 4. Record commands and outcomes in PR/commit notes.

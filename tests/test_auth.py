@@ -31,6 +31,105 @@ def test_healthz_endpoint(client) -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_password_register_and_login_flow(client) -> None:
+    register_response = client.post(
+        "/v1/auth/password/register",
+        json={
+            "deviceId": "pw-device-1",
+            "username": "Alice@Example.com",
+            "password": "StrongPassword123!",
+        },
+    )
+    assert register_response.status_code == 200
+    assert isinstance(register_response.json()["token"], str)
+
+    login_response = client.post(
+        "/v1/auth/password/login",
+        json={
+            "deviceId": "pw-device-2",
+            "username": "alice@example.com",
+            "password": "StrongPassword123!",
+        },
+    )
+    assert login_response.status_code == 200
+    assert isinstance(login_response.json()["token"], str)
+
+
+def test_password_register_rejects_duplicate_username(client) -> None:
+    first = client.post(
+        "/v1/auth/password/register",
+        json={
+            "deviceId": "dup-device-1",
+            "username": "duplicate@example.com",
+            "password": "StrongPassword123!",
+        },
+    )
+    assert first.status_code == 200
+
+    second = client.post(
+        "/v1/auth/password/register",
+        json={
+            "deviceId": "dup-device-2",
+            "username": "duplicate@example.com",
+            "password": "StrongPassword123!",
+        },
+    )
+    assert_error_schema(second, expected_code="conflict", expected_status=409)
+
+
+def test_password_login_rejects_invalid_credentials(client) -> None:
+    register_response = client.post(
+        "/v1/auth/password/register",
+        json={
+            "deviceId": "invalid-cred-device",
+            "username": "loginfail@example.com",
+            "password": "StrongPassword123!",
+        },
+    )
+    assert register_response.status_code == 200
+
+    invalid_login = client.post(
+        "/v1/auth/password/login",
+        json={
+            "deviceId": "invalid-cred-device-2",
+            "username": "loginfail@example.com",
+            "password": "WrongPassword123!",
+        },
+    )
+    assert_error_schema(invalid_login, expected_code="invalid_credentials", expected_status=401)
+
+
+def test_password_login_rejects_device_bound_to_another_user(client) -> None:
+    first_user = client.post(
+        "/v1/auth/password/register",
+        json={
+            "deviceId": "bound-device-1",
+            "username": "userone@example.com",
+            "password": "StrongPassword123!",
+        },
+    )
+    assert first_user.status_code == 200
+    second_user = client.post(
+        "/v1/auth/password/register",
+        json={
+            "deviceId": "bound-device-2",
+            "username": "usertwo@example.com",
+            "password": "StrongPassword123!",
+        },
+    )
+    assert second_user.status_code == 200
+
+    conflicting_login = client.post(
+        "/v1/auth/password/login",
+        json={
+            "deviceId": "bound-device-1",
+            "username": "usertwo@example.com",
+            "password": "StrongPassword123!",
+        },
+    )
+    assert_error_schema(conflicting_login, expected_code="conflict", expected_status=409)
+
+
 def test_register_begin_response_matches_spec_shape(client) -> None:
     response = client.post("/v1/auth/passkey/register/begin", json={"deviceId": "device-register-shape"})
     assert response.status_code == 200
