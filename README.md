@@ -1,0 +1,92 @@
+## Ember Backend
+
+Python backend for Ember Pulse with:
+- Passkey auth endpoints under `/v1/auth/passkey/*`
+- Export ingestion endpoint `/v1/export/sync`
+- SQL Server persistence (raw + normalized export data)
+- Idempotent export handling and health sample dedupe
+
+## Stack
+- Python 3.12+
+- FastAPI
+- SQLAlchemy
+- MS SQL Server (`mssql+pyodbc`)
+- `uv` for dependency and task execution
+
+## Quick Start
+1. Install dependencies:
+   ```bash
+   uv sync
+   ```
+2. Configure environment:
+   ```bash
+   cp .env.example .env
+   ```
+3. Ensure database exists:
+   ```bash
+   uv run python scripts/create_database.py
+   ```
+4. Run server:
+   ```bash
+   uv run ember-backend
+   ```
+
+Server runs on `http://0.0.0.0:8080`.
+
+## Docker
+Run backend + SQL Server with Docker Compose:
+
+1. Create Docker env file:
+   ```bash
+   cp .env.docker.example .env.docker
+   ```
+2. Start stack:
+   ```bash
+   docker compose --env-file .env.docker up --build -d
+   ```
+3. Verify API:
+   ```bash
+   curl http://localhost:8080/healthz
+   ```
+4. Stop stack:
+   ```bash
+   docker compose --env-file .env.docker down
+   ```
+
+Notes:
+- `docker-compose.yml` starts 3 services: `sqlserver`, `db-init`, `api`.
+- `db-init` creates the `Ember` database before API startup.
+- Default `WEBAUTHN_MODE` in Docker is `stub` for local development. Set `WEBAUTHN_MODE=strict` in `.env.docker` for full verification.
+
+## Test
+```bash
+uv run pytest
+```
+
+## Environment Variables
+Core variables:
+- `STORE_TO_SQL`
+- `SQLSERVER_HOST`
+- `SQLSERVER_PORT`
+- `SQLSERVER_DATABASE`
+- `SQLSERVER_USER`
+- `SQLSERVER_PASSWORD`
+- `SQLSERVER_TRUST_SERVER_CERT`
+
+Auth and passkey settings:
+- `JWT_SECRET`
+- `JWT_ISSUER`
+- `JWT_TTL_MINUTES`
+- `WEBAUTHN_RP_ID`
+- `WEBAUTHN_ALLOWED_ORIGINS`
+- `WEBAUTHN_MODE` (`strict` or `stub`)
+
+## API
+Implements the contract defined in:
+- `API_SPEC.md`
+- `docs/BACKEND_SPEC.md`
+
+## Docs
+- `AGENTS.md`
+- `ARCHITECTURE.md`
+- `docs/DEVELOPMENT.md`

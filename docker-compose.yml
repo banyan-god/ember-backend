@@ -1,0 +1,73 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ember-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd}
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  db-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ember-db-init
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      STORE_TO_SQL: "1"
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_PORT: "1433"
+      SQLSERVER_DATABASE: ${SQLSERVER_DATABASE:-Ember}
+      SQLSERVER_USER: sa
+      SQLSERVER_PASSWORD: ${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd}
+      SQLSERVER_TRUST_SERVER_CERT: "true"
+    command: ["uv", "run", "python", "scripts/create_database.py"]
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ember-backend-api
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      STORE_TO_SQL: "1"
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_PORT: "1433"
+      SQLSERVER_DATABASE: ${SQLSERVER_DATABASE:-Ember}
+      SQLSERVER_USER: sa
+      SQLSERVER_PASSWORD: ${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd}
+      SQLSERVER_TRUST_SERVER_CERT: "true"
+      JWT_SECRET: ${JWT_SECRET:-replace-me-with-a-random-32-byte-minimum-secret}
+      JWT_ISSUER: ${JWT_ISSUER:-ember-backend}
+      JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-45}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-example.com}
+      WEBAUTHN_ALLOWED_ORIGINS: ${WEBAUTHN_ALLOWED_ORIGINS:-https://example.com}
+      WEBAUTHN_MODE: ${WEBAUTHN_MODE:-stub}
+      CHALLENGE_TTL_SECONDS: ${CHALLENGE_TTL_SECONDS:-300}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
+      SUGGESTED_SYNC_AFTER_SECONDS: ${SUGGESTED_SYNC_AFTER_SECONDS:-21600}
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  mssql-data:
