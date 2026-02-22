@@ -5,8 +5,8 @@ from datetime import date, datetime
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ember_backend.db import Base
-from ember_backend.utils import utcnow
+from ember_backend.config.database import Base
+from ember_backend.support.utils import utcnow
 
 
 class User(Base):

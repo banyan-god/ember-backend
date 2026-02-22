@@ -21,7 +21,7 @@ def build_engine_and_session(database_url: str) -> tuple[Engine, sessionmaker[Se
 
 
 def create_schema(engine: Engine) -> None:
-    from ember_backend import models  # noqa: F401
+    from ember_backend.model import entities  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
 

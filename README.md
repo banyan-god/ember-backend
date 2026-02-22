@@ -13,6 +13,17 @@ Python backend for Ember Pulse with:
 - MS SQL Server (`mssql+pyodbc`)
 - `uv` for dependency and task execution
 
+## Project Layout (Spring-Style)
+- `src/ember_backend/controller/`: HTTP controllers (route layer)
+- `src/ember_backend/service/`: business use-cases
+- `src/ember_backend/repository/`: data-access layer
+- `src/ember_backend/model/`: persistence entities
+- `src/ember_backend/dto/`: request/response DTOs
+- `src/ember_backend/security/`: token + WebAuthn security logic
+- `src/ember_backend/config/`: settings and DB wiring
+- `src/ember_backend/exception/`: error types and global handlers
+- `src/ember_backend/support/`: shared utilities and rate limiter
+
 ## Quick Start
 1. Install dependencies:
    ```bash

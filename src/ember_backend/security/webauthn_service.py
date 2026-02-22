@@ -9,10 +9,10 @@ from fido2.cose import CoseKey
 from fido2.rpid import verify_rp_id
 from fido2.webauthn import AttestationObject, AuthenticatorData
 
-from ember_backend.config import Settings
-from ember_backend.errors import APIError
-from ember_backend.schemas import AuthenticateFinishRequest, RegisterFinishRequest
-from ember_backend.utils import b64url_decode, b64url_encode
+from ember_backend.config.settings import Settings
+from ember_backend.dto.api import AuthenticateFinishRequest, RegisterFinishRequest
+from ember_backend.exception.api_error import APIError
+from ember_backend.support.utils import b64url_decode, b64url_encode
 
 
 @dataclass(frozen=True)
@@ -61,7 +61,7 @@ class StrictWebAuthnService(WebAuthnService):
 
         try:
             attestation_object = AttestationObject(b64url_decode(request.attestationObject))
-        except Exception as exc:  # pragma: no cover - implementation detail across fido2 versions
+        except Exception as exc:  # pragma: no cover
             raise APIError(400, "invalid_request", "Invalid attestationObject") from exc
 
         auth_data = attestation_object.auth_data

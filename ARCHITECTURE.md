@@ -7,13 +7,15 @@
 4. Backend persists raw batch payload + normalized records and returns deterministic acknowledgement.
 
 ## Key Components
-- `main.py`: FastAPI app wiring, endpoint handlers, error handlers, middleware.
-- `webauthn_service.py`: WebAuthn verification service interface with strict/stub implementations.
-- `auth.py`: bearer token creation/validation and auth dependency.
-- `schemas.py`: request/response validation and business rules.
-- `models.py`: SQLAlchemy persistence model for auth and export data.
-- `db.py`: engine/session factory and schema initialization.
-- `rate_limit.py`: in-memory soft limiter with retry hints.
+- `controller/*`: route/controller layer.
+- `service/*`: business logic orchestration.
+- `repository/*`: database data-access logic.
+- `model/entities.py`: SQLAlchemy persistence entities.
+- `dto/api.py`: request/response DTOs and validation rules.
+- `security/*`: token and WebAuthn security flows.
+- `config/*`: settings and DB/session setup.
+- `exception/*`: typed API errors and global exception mapping.
+- `support/*`: cross-cutting utility helpers.
 
 ## Extensibility
 - Add new export sources by extending payload handling without breaking existing source contracts.

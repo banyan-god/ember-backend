@@ -1,7 +1,15 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/ember_backend/` service code (API handlers, auth, schema, DB, models).
+- `src/ember_backend/controller/` route/controller layer.
+- `src/ember_backend/service/` business logic layer.
+- `src/ember_backend/repository/` data access layer.
+- `src/ember_backend/model/` ORM entities.
+- `src/ember_backend/dto/` request/response DTO models.
+- `src/ember_backend/security/` token + WebAuthn security components.
+- `src/ember_backend/config/` settings and database/session wiring.
+- `src/ember_backend/exception/` API exceptions and handler mapping.
+- `src/ember_backend/support/` shared utilities.
 - `tests/` pytest suite for endpoint and behavior coverage.
 - `scripts/` operational scripts (database bootstrap).
 - `docs/` engineering docs (`DEVELOPMENT.md`, `BACKEND_SPEC.md`).

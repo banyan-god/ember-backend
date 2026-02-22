@@ -4,7 +4,7 @@ import json
 import uuid
 from typing import Any
 
-from ember_backend.utils import b64url_encode
+from ember_backend.support.utils import b64url_encode
 
 
 def build_client_data(challenge: str, ctype: str, origin: str = "https://example.com") -> str:

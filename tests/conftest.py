@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from ember_backend.config import Settings
-from ember_backend.db import build_engine_and_session
+from ember_backend.config.database import build_engine_and_session
+from ember_backend.config.settings import Settings
 from ember_backend.main import create_app
 
 

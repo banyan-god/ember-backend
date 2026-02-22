@@ -4,8 +4,8 @@ import uuid
 
 from sqlalchemy import select
 
-from ember_backend.models import FinanceAccount, FinanceBalance, FinanceTransaction, HealthSample
-from ember_backend.rate_limit import InMemoryRateLimiter
+from ember_backend.model.entities import FinanceAccount, FinanceBalance, FinanceTransaction, HealthSample
+from ember_backend.support.rate_limit import InMemoryRateLimiter
 from tests.helpers import assert_error_schema, finance_payload, health_payload, register_and_get_token
 
 
