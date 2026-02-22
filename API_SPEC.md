@@ -182,6 +182,23 @@ Behavior:
 - Returns `401 invalid_token` when refresh token is invalid, expired, revoked, or used with the wrong device.
 - Refresh tokens are single-use and rotated on every successful refresh.
 
+### Access Token Claims (Frontend Guidance)
+The `token` returned by auth endpoints is a JWT signed by the backend.
+
+Frontend may decode it to read expiry for session UX decisions (for example, refresh 60 seconds before expiry).
+
+Current claims:
+- `sub`: user id
+- `device_id`: bound device id
+- `iss`: token issuer
+- `iat`: issued-at (unix seconds)
+- `exp`: expiry (unix seconds)
+- `jti`: unique token id
+
+Important:
+- Decoding JWT on frontend is informational only.
+- Authorization/trust decisions are enforced by backend signature validation and claim checks.
+
 ## Export
 
 ### POST /v1/export/sync
