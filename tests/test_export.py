@@ -199,6 +199,82 @@ def test_invalid_bearer_token_returns_spec_error_shape(client) -> None:
     assert_error_schema(response, expected_code="invalid_token", expected_status=401)
 
 
+def test_export_bulk_sync_supports_per_item_results_and_replay(client) -> None:
+    token, _ = register_and_get_token(client, device_id="device-bulk")
+    payload_health = health_payload("device-bulk")
+    payload_finance = finance_payload("device-bulk")
+    idem_health = str(uuid.uuid4())
+    idem_finance = str(uuid.uuid4())
+
+    first = client.post(
+        "/v1/export/sync/bulk",
+        json={
+            "items": [
+                {"idempotencyKey": idem_health, "payload": payload_health},
+                {"idempotencyKey": idem_finance, "payload": payload_finance},
+            ]
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert first.status_code == 200
+    first_body = first.json()
+    assert first_body["status"] == "ok"
+    assert first_body["summary"] == {"total": 2, "ok": 2, "replayed": 0, "error": 0}
+    assert first_body["results"][0]["index"] == 0
+    assert first_body["results"][0]["status"] == "ok"
+    assert first_body["results"][0]["received"] == 3
+    assert first_body["results"][1]["index"] == 1
+    assert first_body["results"][1]["status"] == "ok"
+    assert first_body["results"][1]["received"] == 3
+
+    second = client.post(
+        "/v1/export/sync/bulk",
+        json={
+            "items": [
+                {"idempotencyKey": idem_health, "payload": payload_health},
+                {"idempotencyKey": idem_finance, "payload": payload_finance},
+            ]
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert second.status_code == 200
+    second_body = second.json()
+    assert second_body["summary"] == {"total": 2, "ok": 0, "replayed": 2, "error": 0}
+    assert second_body["results"][0]["status"] == "replayed"
+    assert second_body["results"][0]["received"] == 3
+    assert second_body["results"][1]["status"] == "replayed"
+    assert second_body["results"][1]["received"] == 3
+
+
+def test_export_bulk_sync_reports_item_errors_without_failing_whole_request(client) -> None:
+    token, _ = register_and_get_token(client, device_id="device-bulk-mixed")
+    valid_payload = finance_payload("device-bulk-mixed")
+    invalid_payload = health_payload("device-bulk-mixed")
+    invalid_payload["range"] = None
+    forbidden_payload = finance_payload("device-other")
+
+    response = client.post(
+        "/v1/export/sync/bulk",
+        json={
+            "items": [
+                {"idempotencyKey": str(uuid.uuid4()), "payload": valid_payload},
+                {"idempotencyKey": str(uuid.uuid4()), "payload": invalid_payload},
+                {"idempotencyKey": str(uuid.uuid4()), "payload": forbidden_payload},
+            ]
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["summary"] == {"total": 3, "ok": 1, "replayed": 0, "error": 2}
+    assert body["results"][0]["status"] == "ok"
+    assert body["results"][1]["status"] == "error"
+    assert body["results"][1]["error"]["code"] == "invalid_request"
+    assert body["results"][2]["status"] == "error"
+    assert body["results"][2]["error"]["code"] == "forbidden"
+
+
 def test_rate_limit_returns_backoff_hint(client, app) -> None:
     app.state.rate_limiter = InMemoryRateLimiter(limit_per_minute=2)
 
@@ -210,3 +286,15 @@ def test_rate_limit_returns_backoff_hint(client, app) -> None:
 
     error = assert_error_schema(response3, expected_code="rate_limited", expected_status=429)
     assert "retryAfterSeconds" in error["details"]
+
+
+def test_rate_limit_can_be_disabled(client, app) -> None:
+    app.state.rate_limiter = InMemoryRateLimiter(limit_per_minute=1, enabled=False)
+
+    response1 = client.post("/v1/auth/passkey/register/begin", json={"deviceId": "device-rate-disabled"})
+    response2 = client.post("/v1/auth/passkey/register/begin", json={"deviceId": "device-rate-disabled"})
+    response3 = client.post("/v1/auth/passkey/register/begin", json={"deviceId": "device-rate-disabled"})
+
+    assert response1.status_code == 200
+    assert response2.status_code == 200
+    assert response3.status_code == 200

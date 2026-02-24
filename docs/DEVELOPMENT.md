@@ -48,6 +48,13 @@ AASA_APP_IDS=ABCDE12345.com.example.emberpulse
   - Refresh token lifetime in days.
   - Default is `3650` (10 years) for persistent login.
 
+### Rate Limit Environment Values
+- `RATE_LIMIT_ENABLED`
+  - `true` enables per-device rate limiting.
+  - `false` disables rate limiting (useful for single-user/local setups).
+- `RATE_LIMIT_PER_MINUTE`
+  - Maximum requests per minute per device when enabled.
+
 ## Run
 ```sh
 uv sync --all-groups
@@ -87,5 +94,5 @@ docker compose --env-file .env.docker run --rm api uv run python scripts/create_
 1. Run tests.
 2. Smoke-check `/healthz`.
 3. Validate auth begin/finish and one export sync call.
-   Also validate `/v1/auth/password/register`, `/v1/auth/password/login`, and `/v1/auth/token/refresh`.
+   Also validate `/v1/auth/password/register`, `/v1/auth/password/login`, `/v1/auth/token/refresh`, and `/v1/export/sync/bulk`.
 4. Record commands and outcomes in PR/commit notes.

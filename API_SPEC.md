@@ -357,6 +357,82 @@ Response:
 }
 ```
 
+### POST /v1/export/sync/bulk
+Upload multiple export batches in one request.
+
+Headers:
+- `Authorization: Bearer <token>`
+
+Request:
+```json
+{
+  "items": [
+    {
+      "idempotencyKey": "uuid-v4",
+      "payload": {
+        "source": "healthkit",
+        "device": {
+          "deviceId": "uuid",
+          "platform": "ios",
+          "appVersion": "1.0.0",
+          "timezone": "America/Los_Angeles"
+        },
+        "range": {
+          "start": "2026-02-20T00:00:00Z",
+          "end": "2026-02-21T00:00:00Z"
+        },
+        "reason": "manual",
+        "health": { "samples": [], "characteristics": [], "activitySummaries": [], "userAnnotatedMedications": [] },
+        "finance": null
+      }
+    }
+  ]
+}
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "summary": {
+    "total": 3,
+    "ok": 1,
+    "replayed": 1,
+    "error": 1
+  },
+  "results": [
+    {
+      "index": 0,
+      "status": "ok",
+      "received": 42,
+      "next": { "suggestedSyncAfterSeconds": 21600 }
+    },
+    {
+      "index": 1,
+      "status": "replayed",
+      "received": 42,
+      "next": { "suggestedSyncAfterSeconds": 21600 }
+    },
+    {
+      "index": 2,
+      "status": "error",
+      "error": {
+        "code": "invalid_request",
+        "message": "Invalid request payload",
+        "details": { "payload.range": "range is required when sending health.samples" }
+      }
+    }
+  ]
+}
+```
+
+Behavior:
+- `items` must contain 1 to 100 entries.
+- Each item uses the same validation rules as `POST /v1/export/sync`.
+- Processing is non-atomic: one item failure does not roll back successful items.
+- `idempotencyKey` is optional per item. When provided, replay semantics match `POST /v1/export/sync`.
+- HTTP status is `200` when the bulk request itself is valid, even when some items fail.
+
 ## Notes
 - Server should treat `(deviceId, source, type, start, end, sourceName)` as idempotent for health samples.
 - Passkey endpoints should verify challenge/nonce and bind credential to the user.

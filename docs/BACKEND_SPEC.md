@@ -220,7 +220,47 @@ Response:
 }
 ```
 
-### 4.2 Idempotency
+### 4.2 Bulk Sync
+`POST /v1/export/sync/bulk`
+Headers:
+- `Authorization: Bearer <token>`
+
+Request:
+```json
+{
+  "items": [
+    {
+      "idempotencyKey": "uuid-v4",
+      "payload": { "...same shape as /v1/export/sync request body..." }
+    }
+  ]
+}
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "summary": { "total": 3, "ok": 1, "replayed": 1, "error": 1 },
+  "results": [
+    { "index": 0, "status": "ok", "received": 42, "next": { "suggestedSyncAfterSeconds": 21600 } },
+    { "index": 1, "status": "replayed", "received": 42, "next": { "suggestedSyncAfterSeconds": 21600 } },
+    {
+      "index": 2,
+      "status": "error",
+      "error": { "code": "invalid_request", "message": "Invalid request payload", "details": {} }
+    }
+  ]
+}
+```
+
+Rules:
+- `items` size: 1..100.
+- Per-item validation and persistence rules are identical to single sync endpoint.
+- Non-atomic processing: successful items commit even if later items fail.
+- Per-item replay semantics apply only when `idempotencyKey` is provided on that item.
+
+### 4.3 Idempotency
 Implement idempotent write behavior:
 - If `Idempotency-Key` repeats within 24 hours, return the previous response.
 - For HealthKit samples, additionally de‑duplicate by `(deviceId, type, start, end, source)`.
@@ -270,6 +310,7 @@ Optional normalized tables:
 
 ## 9. Rate Limiting
 - Soft limits per device (e.g., 60 req/min) with backoff hints in error responses.
+- Can be disabled via configuration (`RATE_LIMIT_ENABLED=false`) for single-user/dev deployments.
 
 ## 10. UAT Checklist (Backend)
 - Passkey register + sign‑in end‑to‑end.

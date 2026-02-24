@@ -6,12 +6,16 @@ from collections import defaultdict, deque
 
 
 class InMemoryRateLimiter:
-    def __init__(self, limit_per_minute: int) -> None:
+    def __init__(self, limit_per_minute: int, enabled: bool = True) -> None:
         self.limit_per_minute = limit_per_minute
+        self.enabled = enabled
         self._events: dict[str, deque[float]] = defaultdict(deque)
         self._lock = threading.Lock()
 
     def allow(self, key: str) -> tuple[bool, int | None]:
+        if not self.enabled or self.limit_per_minute <= 0:
+            return True, None
+
         now = time.monotonic()
         cutoff = now - 60.0
 

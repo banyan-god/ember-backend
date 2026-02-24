@@ -5,6 +5,7 @@ Python backend for Ember Pulse with:
 - Username/password auth endpoints under `/v1/auth/password/*`
 - Refresh endpoint under `/v1/auth/token/refresh`
 - Export ingestion endpoint `/v1/export/sync`
+- Bulk export ingestion endpoint `/v1/export/sync/bulk`
 - SQL Server persistence (raw + normalized export data)
 - Idempotent export handling and health sample dedupe
 
@@ -99,6 +100,12 @@ Auth and passkey settings:
 - `WEBAUTHN_ALLOWED_ORIGINS`
 - `WEBAUTHN_MODE` (`strict` or `stub`)
 - `AASA_APP_IDS` (comma-separated `TEAMID.bundleid` entries)
+- `RATE_LIMIT_ENABLED` (`true` or `false`)
+- `RATE_LIMIT_PER_MINUTE`
+
+Rate limiting:
+- Default: enabled, `RATE_LIMIT_PER_MINUTE=60`.
+- Single-user/dev mode: set `RATE_LIMIT_ENABLED=false` to bypass rate limiting.
 
 Token behavior:
 - Auth endpoints (`passkey` and `password`) return:

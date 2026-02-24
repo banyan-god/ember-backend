@@ -215,3 +215,39 @@ class ExportSyncResponse(BaseModel):
     status: Literal["ok"]
     received: int
     next: NextSyncAdvice
+
+
+class BulkExportSyncItemRequest(BaseModel):
+    idempotencyKey: str | None = None
+    payload: dict[str, Any]
+
+
+class BulkExportSyncRequest(BaseModel):
+    items: list[BulkExportSyncItemRequest] = Field(min_length=1, max_length=100)
+
+
+class ErrorPayload(BaseModel):
+    code: str
+    message: str
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class BulkExportSyncItemResult(BaseModel):
+    index: int
+    status: Literal["ok", "replayed", "error"]
+    received: int | None = None
+    next: NextSyncAdvice | None = None
+    error: ErrorPayload | None = None
+
+
+class BulkExportSyncSummary(BaseModel):
+    total: int
+    ok: int
+    replayed: int
+    error: int
+
+
+class BulkExportSyncResponse(BaseModel):
+    status: Literal["ok"]
+    summary: BulkExportSyncSummary
+    results: list[BulkExportSyncItemResult]

@@ -44,7 +44,10 @@ def create_app(
     app.state.session_factory = session_factory
     app.state.webauthn = webauthn_service or build_webauthn_service(settings)
     app.state.token_service = TokenService(settings)
-    app.state.rate_limiter = InMemoryRateLimiter(settings.rate_limit_per_minute)
+    app.state.rate_limiter = InMemoryRateLimiter(
+        limit_per_minute=settings.rate_limit_per_minute,
+        enabled=settings.rate_limit_enabled,
+    )
 
     @app.middleware("http")
     async def request_context_middleware(request: Request, call_next):

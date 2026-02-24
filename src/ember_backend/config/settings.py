@@ -36,7 +36,8 @@ class Settings(BaseSettings):
     challenge_ttl_seconds: int = Field(default=300, alias="CHALLENGE_TTL_SECONDS")
     aasa_app_ids: str = Field(default="", alias="AASA_APP_IDS")
 
-    rate_limit_per_minute: int = Field(default=60, alias="RATE_LIMIT_PER_MINUTE")
+    rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
+    rate_limit_per_minute: int = Field(default=60, ge=1, alias="RATE_LIMIT_PER_MINUTE")
     suggested_sync_after_seconds: int = Field(default=21600, alias="SUGGESTED_SYNC_AFTER_SECONDS")
 
     @property

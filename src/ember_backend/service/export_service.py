@@ -4,10 +4,20 @@ import json
 import uuid
 from dataclasses import dataclass
 
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from ember_backend.config.settings import Settings
-from ember_backend.dto.api import ExportSyncRequest, ExportSyncResponse, NextSyncAdvice
+from ember_backend.dto.api import (
+    BulkExportSyncRequest,
+    BulkExportSyncResponse,
+    BulkExportSyncSummary,
+    BulkExportSyncItemResult,
+    ErrorPayload,
+    ExportSyncRequest,
+    ExportSyncResponse,
+    NextSyncAdvice,
+)
 from ember_backend.exception.api_error import APIError
 from ember_backend.repository.export_repository import ExportRepository
 from ember_backend.security.token_service import AuthContext
@@ -32,7 +42,86 @@ class ExportService:
         self.rate_limiter = rate_limiter
 
     def sync(self, payload: ExportSyncRequest, auth: AuthContext, idempotency_key: str | None) -> ExportSyncResponse | ReplayResponse:
+        return self._sync_internal(payload, auth, idempotency_key, enforce_rate_limit=True)
+
+    def sync_bulk(self, payload: BulkExportSyncRequest, auth: AuthContext) -> BulkExportSyncResponse:
         self._enforce_rate_limit(auth.device_id)
+
+        results: list[BulkExportSyncItemResult] = []
+        ok_count = 0
+        replayed_count = 0
+        error_count = 0
+
+        for index, item in enumerate(payload.items):
+            try:
+                parsed_payload = ExportSyncRequest.model_validate(item.payload)
+                result = self._sync_internal(
+                    parsed_payload,
+                    auth,
+                    item.idempotencyKey,
+                    enforce_rate_limit=False,
+                )
+                if isinstance(result, ReplayResponse):
+                    replayed_count += 1
+                    results.append(self._to_replay_result(index, result))
+                else:
+                    ok_count += 1
+                    results.append(
+                        BulkExportSyncItemResult(
+                            index=index,
+                            status="ok",
+                            received=result.received,
+                            next=result.next,
+                        )
+                    )
+            except ValidationError as exc:
+                error_count += 1
+                results.append(
+                    BulkExportSyncItemResult(
+                        index=index,
+                        status="error",
+                        error=ErrorPayload(
+                            code="invalid_request",
+                            message="Invalid request payload",
+                            details=self._validation_details(exc),
+                        ),
+                    )
+                )
+            except APIError as exc:
+                error_count += 1
+                results.append(
+                    BulkExportSyncItemResult(
+                        index=index,
+                        status="error",
+                        error=ErrorPayload(
+                            code=exc.code,
+                            message=exc.message,
+                            details=exc.details,
+                        ),
+                    )
+                )
+
+        return BulkExportSyncResponse(
+            status="ok",
+            summary=BulkExportSyncSummary(
+                total=len(payload.items),
+                ok=ok_count,
+                replayed=replayed_count,
+                error=error_count,
+            ),
+            results=results,
+        )
+
+    def _sync_internal(
+        self,
+        payload: ExportSyncRequest,
+        auth: AuthContext,
+        idempotency_key: str | None,
+        *,
+        enforce_rate_limit: bool,
+    ) -> ExportSyncResponse | ReplayResponse:
+        if enforce_rate_limit:
+            self._enforce_rate_limit(auth.device_id)
 
         if payload.device.deviceId != auth.device_id:
             raise APIError(
@@ -98,6 +187,31 @@ class ExportService:
                 raise ValueError
         except ValueError as exc:
             raise APIError(400, "invalid_request", "Idempotency-Key must be a UUID v4") from exc
+
+    def _to_replay_result(self, index: int, replay: ReplayResponse) -> BulkExportSyncItemResult:
+        body = replay.body
+        received_raw = body.get("received")
+        received = received_raw if isinstance(received_raw, int) else 0
+        suggested = self.settings.suggested_sync_after_seconds
+        next_raw = body.get("next")
+        if isinstance(next_raw, dict):
+            suggested_raw = next_raw.get("suggestedSyncAfterSeconds")
+            if isinstance(suggested_raw, int):
+                suggested = suggested_raw
+        return BulkExportSyncItemResult(
+            index=index,
+            status="replayed",
+            received=received,
+            next=NextSyncAdvice(suggestedSyncAfterSeconds=suggested),
+        )
+
+    @staticmethod
+    def _validation_details(exc: ValidationError) -> dict[str, str]:
+        details: dict[str, str] = {}
+        for err in exc.errors():
+            location = ".".join(str(part) for part in err.get("loc", []))
+            details[location] = err.get("msg", "invalid")
+        return details
 
     @staticmethod
     def _count_received_records(payload: ExportSyncRequest) -> int:
