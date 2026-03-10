@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Generator
 
 from fastapi import Request
 from sqlalchemy import create_engine
+from sqlalchemy.exc import SAWarning
+
+# SQL Server 2017 reports version '17.0.x' which SQLAlchemy does not recognise;
+# the dialect works fine regardless, so silence the noisy startup warning.
+warnings.filterwarnings("ignore", message="Unrecognized server version info", category=SAWarning)
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
