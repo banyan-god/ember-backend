@@ -5,6 +5,7 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import IntegrityError as SAIntegrityError
 from sqlalchemy.orm import Session
 
 from ember_backend.dto.api import ExportSyncRequest
@@ -93,42 +94,9 @@ class ExportRepository:
 
     def persist_normalized(self, batch_id: str, payload: ExportSyncRequest) -> None:
         if payload.health:
-            for sample in payload.health.samples:
-                exists = self.db.scalar(
-                    select(func.count(HealthSample.id)).where(
-                        and_(
-                            HealthSample.device_id == payload.device.deviceId,
-                            HealthSample.sample_type == sample.type,
-                            HealthSample.start_at == sample.start,
-                            HealthSample.end_at == sample.end,
-                            HealthSample.source_name == sample.source,
-                        )
-                    )
-                )
-                if exists:
-                    continue
+            if payload.health.samples:
+                self._persist_health_samples(batch_id, payload)
 
-                quantity_value = None
-                quantity_unit = None
-                if sample.quantity is not None:
-                    quantity_value = str(sample.quantity.value)
-                    quantity_unit = sample.quantity.unit
-
-                self.db.add(
-                    HealthSample(
-                        batch_id=batch_id,
-                        device_id=payload.device.deviceId,
-                        sample_type=sample.type,
-                        start_at=sample.start,
-                        end_at=sample.end,
-                        source_name=sample.source,
-                        device_name=sample.device,
-                        quantity_value=quantity_value,
-                        quantity_unit=quantity_unit,
-                        category_value=sample.categoryValue,
-                        metadata_json=json.dumps(sample.metadata) if sample.metadata is not None else None,
-                    )
-                )
 
             for characteristic in payload.health.characteristics:
                 self.db.add(
@@ -191,6 +159,41 @@ class ExportRepository:
                         as_of=balance.asOf,
                     )
                 )
+
+    def _persist_health_samples(self, batch_id: str, payload: ExportSyncRequest) -> None:
+        device_id = payload.device.deviceId
+
+        for sample in payload.health.samples:
+            quantity_value = None
+            quantity_unit = None
+            if sample.quantity is not None:
+                quantity_value = str(sample.quantity.value)
+                quantity_unit = sample.quantity.unit
+
+            # Use a savepoint so a duplicate (IntegrityError from the unique
+            # constraint) only rolls back this single insert, not the whole
+            # transaction.  This replaces the old N+1 SELECT-per-sample pattern
+            # that was holding DB connections for minutes and exhausting the pool.
+            nested = self.db.begin_nested()
+            try:
+                self.db.add(
+                    HealthSample(
+                        batch_id=batch_id,
+                        device_id=device_id,
+                        sample_type=sample.type,
+                        start_at=sample.start,
+                        end_at=sample.end,
+                        source_name=sample.source,
+                        device_name=sample.device,
+                        quantity_value=quantity_value,
+                        quantity_unit=quantity_unit,
+                        category_value=sample.categoryValue,
+                        metadata_json=json.dumps(sample.metadata) if sample.metadata is not None else None,
+                    )
+                )
+                nested.commit()
+            except SAIntegrityError:
+                nested.rollback()
 
     def commit(self) -> None:
         self.db.commit()

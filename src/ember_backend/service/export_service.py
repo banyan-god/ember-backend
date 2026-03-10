@@ -100,6 +100,19 @@ class ExportService:
                         ),
                     )
                 )
+            except Exception:
+                self.repository.rollback()
+                error_count += 1
+                results.append(
+                    BulkExportSyncItemResult(
+                        index=index,
+                        status="error",
+                        error=ErrorPayload(
+                            code="internal_error",
+                            message="Unexpected error processing item",
+                        ),
+                    )
+                )
 
         return BulkExportSyncResponse(
             status="ok",
@@ -168,6 +181,9 @@ class ExportService:
         except IntegrityError as exc:
             self.repository.rollback()
             raise APIError(409, "conflict", "Database conflict while processing export") from exc
+        except Exception:
+            self.repository.rollback()
+            raise
 
     def _enforce_rate_limit(self, key: str) -> None:
         allowed, retry_after = self.rate_limiter.allow(key)
