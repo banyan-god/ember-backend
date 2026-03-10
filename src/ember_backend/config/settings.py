@@ -62,6 +62,8 @@ class Settings(BaseSettings):
             f"{self.sqlserver_user}:{password}@{self.sqlserver_host}:{self.sqlserver_port}/{self.sqlserver_database}"
             "?driver=ODBC+Driver+18+for+SQL+Server"
             f"&TrustServerCertificate={trust}"
+            "&Connection+Timeout=10"
+            "&Login+Timeout=10"
         )
 
 

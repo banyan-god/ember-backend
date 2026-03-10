@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from copy import deepcopy
 import uuid
 from contextlib import asynccontextmanager
@@ -21,6 +23,8 @@ from ember_backend.security.token_service import TokenService
 from ember_backend.security.webauthn_service import WebAuthnService, build_webauthn_service
 from ember_backend.support.rate_limit import InMemoryRateLimiter
 
+logger = logging.getLogger(__name__)
+
 
 def create_app(
     settings: Settings | None = None,
@@ -35,7 +39,10 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app_instance: FastAPI):
-        create_schema(app_instance.state.engine)
+        try:
+            await asyncio.to_thread(create_schema, app_instance.state.engine)
+        except Exception:
+            logger.exception("Failed to create database schema — will retry on first request")
         yield
 
     app = FastAPI(title="Ember Backend", version="0.1.0", lifespan=lifespan)

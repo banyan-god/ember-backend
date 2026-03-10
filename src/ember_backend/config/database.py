@@ -14,6 +14,11 @@ def build_engine_and_session(database_url: str) -> tuple[Engine, sessionmaker[Se
     kwargs: dict[str, object] = {"future": True, "pool_pre_ping": True}
     if database_url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
+    else:
+        kwargs["pool_size"] = 5
+        kwargs["max_overflow"] = 10
+        kwargs["pool_timeout"] = 30
+        kwargs["pool_recycle"] = 1800
 
     engine = create_engine(database_url, **kwargs)
     session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
